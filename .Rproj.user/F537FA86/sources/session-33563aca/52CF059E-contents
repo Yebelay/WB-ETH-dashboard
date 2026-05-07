@@ -1,0 +1,936 @@
+---
+title: "Quarto Dashboards"
+subtitle: "for Monitoring Data Collection"
+author: "Yebelay · C4ED Ethiopia"
+date: "2026-05-12"
+format:
+  revealjs:
+    width: 1280
+    height: 720
+    margin: 0.05
+    min-scale: 0.5
+    max-scale: 1.5
+    theme: [default, custom.scss]
+    logo: c4ed_logo.png
+    transition: slide
+    background-transition: fade
+    slide-number: c/t
+    show-slide-number: all
+    chalkboard: false
+    incremental: false
+    code-copy: true
+    code-line-numbers: true
+    highlight-style: tango
+    toc: false
+    footer: "Quarto Dashboards · Internal seminar · May 12, 2026"
+    smaller: false
+    scrollable: true
+    embed-resources: true
+    pdf-separate-fragments: false
+   # title-slide-attributes: 
+   #   data-background-color: "#047B77"/
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: false
+knitr:
+  opts_chunk:
+    dev: png
+    fig.width: 8
+    fig.height: 4.5
+---
+
+## Session Overview
+
+```{=html}
+<style>
+.session-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0.55em 0.9em;
+  margin-top:0.4em;
+}
+.session-card{
+  display:grid;
+  grid-template-columns:64px 1fr;
+  background:#f3f6f6;
+  border-radius:6px;
+  overflow:hidden;
+  align-items:stretch;
+}
+.session-card .num{
+  background:#047B77;
+  color:#fff;
+  font-size:1.15em;
+  font-weight:600;
+  padding:0.55em 0;
+  text-align:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:"JetBrains Mono","Inter",monospace;
+}
+.session-card .body{
+  padding:0.5em 0.85em;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.session-card .title{
+  font-weight:600;
+  color:#1f2933;
+  font-size:0.92em;
+  line-height:1.15;
+}
+.session-card .desc{
+  color:#5b6770;
+  font-size:0.72em;
+  margin-top:0.18em;
+  line-height:1.3;
+}
+.session-card.highlight{ background:#047B77; }
+.session-card.highlight .num{ background:#035854; }
+.session-card.highlight .title{ color:#fff; }
+.session-card.highlight .desc{ color:#CDEAE8; }
+.session-card.highlight .desc a{
+  color:#CDEAE8;
+  border-bottom:1px dotted rgba(255,255,255,0.55);
+  text-decoration:none;
+}
+</style>
+
+<div class="session-grid">
+
+  <div class="session-card">
+    <div class="num">01</div>
+    <div class="body">
+      <div class="title">What is Quarto / R Markdown?</div>
+      <div class="desc">From dynamic documents to the <code>.qmd</code> ecosystem</div>
+    </div>
+  </div>
+
+  <div class="session-card">
+    <div class="num">05</div>
+    <div class="body">
+      <div class="title">Value Boxes</div>
+      <div class="desc">KPI numbers: syntax, icons, colors, dynamic values</div>
+    </div>
+  </div>
+
+  <div class="session-card">
+    <div class="num">02</div>
+    <div class="body">
+      <div class="title">Quarto Dashboard</div>
+      <div class="desc">Minimal YAML, rendering, and the dashboard structure</div>
+    </div>
+  </div>
+
+  <div class="session-card">
+    <div class="num">06</div>
+    <div class="body">
+      <div class="title">Tabsets &amp; Sidebars</div>
+      <div class="desc">Multiple views, filter panels, global vs. page-level</div>
+    </div>
+  </div>
+
+  <div class="session-card">
+    <div class="num">03</div>
+    <div class="body">
+      <div class="title">Pages, Rows &amp; Columns</div>
+      <div class="desc">Building layout with <code>#</code> <code>##</code> <code>###</code> headings and size control</div>
+    </div>
+  </div>
+
+  <div class="session-card highlight">
+    <div class="num">07</div>
+    <div class="body">
+      <div class="title">Example - WB Eth</div>
+      <div class="desc"><a href="https://yebelay.github.io/WB-ETH-dashboard/">yebelay.github.io/WB-ETH-dashboard/</a></div>
+    </div>
+  </div>
+
+  <div class="session-card">
+    <div class="num">04</div>
+    <div class="body">
+      <div class="title">Cards</div>
+      <div class="desc">Code-chunk outputs, manual cards, scrollable rows</div>
+    </div>
+  </div>
+
+</div>
+```
+
+::: notes
+Walk the audience through the seven blocks left-to-right, top-to-bottom.
+Cards 01–06 are the teaching modules; card 07 is the live demo we'll build
+toward at the end. ~75 min plus 15 min Q&A.
+:::
+
+---
+
+## What is Quarto / R Markdown?
+
+::: {.columns}
+
+::: {.column width="55%"}
+
+- **R Markdown** combines narrative text (markdown) with executable code chunks (usually R) into a single dynamic document.
+
+- **Quarto** is the next-generation R Markdown from Posit, **same idea**, *more features*, *multi-language*.
+
+  - **Multi-language**: R, Python, Julia, Observable
+  - **Many outputs**: HTML, PDF, Word, slides, websites, dashboards
+  - **Reproducible**: code + narrative in one `.qmd`
+  - **Compatible**: most `.Rmd` files render unchanged
+
+::: {.callout-note title="Live example"}
+My personal site is built with Quarto:
+<https://yebelay.rbind.io/>
+:::
+:::
+
+::: {.column width="45%"}
+
+![](fig1.png){width="70%"}
+
+:::
+
+:::
+
+
+---
+
+## Quarto vs R Markdown 
+
+If you know R Markdown, you already know most of Quarto. Here's what changed:
+
+| Aspect | R Markdown | Quarto |
+|---|---|---|
+| File format | `.Rmd` | `.qmd` |
+| Engine | `knitr` only | `knitr` **+** Jupyter |
+| Languages | Mainly R | R, Python, Julia, Observable |
+| Output formats | Via `rmarkdown` package | Built-in, unified YAML |
+| YAML option | `output: html_document` | `format: dashboard` |
+| Chunk options | ` ```{r echo=FALSE} ` | `#| echo: false` (inline) |
+| Dashboards | `flexdashboard` package | `format: dashboard` (built-in) |
+
+::: {.fragment .fade-in}
+::: {.callout-tip}
+Think of Quarto as **one tool** for everything you currently do across `rmarkdown`, `bookdown`, `xaringan`, and `flexdashboard`.
+:::
+:::
+
+---
+
+
+## What is a Quarto Dashboard?
+
+A **single `.qmd` file** that renders into a fully interactive web dashboard (no Shiny server required for static content).
+
+::: {.columns}
+
+::: {.column width="33%"}
+::: {.callout-note title="📁 One file"}
+Structure, code, and text live together in a single `.qmd`.
+:::
+:::
+
+::: {.column width="33%"}
+::: {.callout-note title="🚀 No server"}
+Renders to a standalone `.html` you can email or host.
+:::
+:::
+
+::: {.column width="33%"}
+::: {.callout-note title="🔬 Multiple languages"}
+Use the right engine: R, Python, Julia, or Observable.
+:::
+:::
+
+:::
+
+::: {.callout-tip}
+A dashboard is **just a `.qmd` file** with `format: dashboard` in the YAML.
+:::
+
+---
+
+## Step 1 - Minimal `.qmd` File {.medium}
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+#### 💻 Code
+
+````{.markdown filename="dashboard.qmd"}
+---
+title: "LLRP I Dashboard"
+format: dashboard
+---
+
+```{{r}}
+#| title: "Scatter Plot"
+plot(mtcars$hp, mtcars$mpg)
+```
+
+```{{r}}
+#| title: "Summary Table"
+knitr::kable(head(mtcars, 5))
+```
+````
+
+::: 
+
+::: {.column width="50%"}
+#### 🔄 What happens when you click Render
+
+1. Quarto reads your `.qmd` file
+2. `knitr` (or Jupyter) runs your code chunks
+3. Each chunk output → becomes a **card**
+4. Dashboard `.html` is saved alongside the `.qmd`
+5. The browser opens automatically to show the result
+
+::: {.callout-tip}
+Save the file as `dashboard.qmd`, then click **Render** (`Ctrl+Shift+K` in RStudio).
+:::
+
+:::
+:::
+
+---
+
+## YAML Options Reference {.medium}
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+````{.yaml filename="_quarto.yml"}
+---
+title: "C4ED Programme Monitor"
+author: "Yebelay"
+format:
+  dashboard:
+    theme: flatly      # bootswatch theme
+    orientation: rows  # rows (default)
+    logo: logo.png     # nav bar logo
+    scrolling: true    # allow scrolling
+    expandable: true   # fullscreen cards
+execute:
+  echo: false          # hide all code
+  warning: false
+  message: false
+---
+````
+
+::: 
+
+::: {.column width="50%"}
+
+| Option | What it does |
+|---|---|
+| `theme:` | Built-in Bootswatch: `flatly`, `cosmo`, `minty`, `darkly`… |
+| `orientation:` | `rows` (default) → `##` creates rows · `columns` → `##` creates columns |
+| `scrolling:` | `true` allows the page to scroll; `false` pins card heights |
+| `echo: false` | **Always** set this - hides all R/Python code from output |
+| `expandable:` | Adds a fullscreen button to every card automatically |
+
+:::
+:::
+
+::: {.callout-important}
+Set `echo: false` **globally** in `execute:` - never per-chunk - so code is never accidentally exposed to stakeholders.
+:::
+
+---
+
+## The Heading Hierarchy
+
+::: {.columns}
+
+::: {.column width="33%"}
+### 🧭 Navigation
+
+Top bar with the icon, title, author, and links to each `#` page.
+:::
+
+::: {.column width="33%"}
+### 🔲 Layout
+
+Pages, rows, columns, and tabsets - all defined by Markdown headings (`#`, `##`, `###`).
+:::
+
+::: {.column width="33%"}
+### 🃏 Containers
+
+**Cards** display output. **Sidebars** hold filters. **Toolbars** add inline inputs.
+:::
+
+:::
+
+- Dashboard layout is **entirely** controlled by Markdown heading levels. **Never skip a level.**
+
+::: {.callout-important}
+The rule: `#` → `##` → `###` → chunk. **Skipping a level breaks the layout.**
+:::
+
+---
+
+## Heading Hierarchy - Reference Table {.smaller}
+
+| Level | Syntax | Creates | Key attribute |
+|---|---|---|---|
+| 1 | `# Page name` | Navigation tab in top bar | `background-color=` |
+| 2 | `## Row name` | Horizontal row band | `{height=N%}` · `{.tabset}` · `{.sidebar}` |
+| 3 | `### Col name` | Column inside a row | `{width=N%}` |
+| – | ` ```{r} ` chunk | One card inside a column | `#| title:` · `#| fig-height:` |
+| – | `content: valuebox` | KPI value box | `#| icon:` · `#| color:` |
+
+::: {.callout-tip}
+The hierarchy is always `# → ## → ### → chunk`.
+:::
+
+---
+
+## Pages: Level-1 Headings `#` {.smaller}
+
+::: {.columns}
+
+::: {.column width="50%"}
+````{.markdown filename="pages.qmd"}
+---
+title: "LLRP I Dashboard"
+format: dashboard
+---
+# Overview
+# Follow-up
+# Daily
+# Teams
+# Woredas
+# Spousal
+# RCE
+````
+
+**Key points**
+
+- Each `#` = one navigation tab at the top
+- Readers click tabs to switch between pages
+
+:::
+
+::: {.column width="50%"}
+![](fig2.png){width="100%" height="200px"}
+- Add `{background-color="#047B77"}` for colored section dividers
+:::
+
+:::
+
+---
+
+## Rows: Level-2 Headings `##` {.smaller}
+
+::: {.columns}
+
+::: {.column width="45%"}
+
+````{.markdown filename="rows.qmd"}
+# Overview
+## Key figures {height=20%}
+content here
+
+## Main charts {height=55%}
+content here
+
+## Data table {height=25%}
+content here
+````
+
+**Rules**
+
+- `##` creates a full-width horizontal band
+- Content inside a row flows side by side
+- Use `{height=N%}` to control the vertical split
+- Rows are stacked top to bottom on the page
+
+::: 
+
+::: {.column width="55%"}
+
+![](fig3.png){width="80%"}
+:::
+
+:::
+
+
+::: {.callout-note}
+Heights should sum to ~100%. Quarto distributes leftover space automatically if they don't.
+:::
+
+---
+
+## Columns: Level-3 Headings `###` {.smaller}
+
+::: {.columns}
+
+::: {.column width="45%"}
+
+````{.markdown filename="columns.qmd"}
+# Overview
+
+## Row 1 {height=28%}
+
+### Column A {width=30%}
+content here
+
+### Column B {width=40%}
+content here
+
+### Column C {width=30%}
+content here
+````
+
+::: 
+
+::: {.column width="55%"}
+
+![](fig4.png){width="85%"}
+:::
+:::
+
+| Heading | Default (`orientation: rows`) | With `orientation: columns` |
+|---|---|---|
+| `##` | Horizontal row | Vertical column |
+| `###` | Column inside row | Row inside column |
+| `{height=N%}` | On `##` row | On `###` row |
+| `{width=N%}` | On `###` column | On `##` column |
+
+---
+
+## What is a Card? Code → Output {.smaller}
+
+Every code chunk output is automatically wrapped in a card. The `#| title:` option sets the card header.
+
+::: {.panel-tabset}
+
+### Code
+
+````{.markdown filename="card.qmd"}
+```{{r}}
+#| title: "Beneficiaries by team"
+#| fig-height: 4
+#| expandable: true
+ggplot(df, aes(x = team, y = reach, fill = team)) +
+  geom_col(show.legend = FALSE) +
+  theme_c4ed()
+```
+````
+
+### Live preview
+
+```{r}
+#| label: card-preview
+#| fig-align: center
+#| echo: false
+library(ggplot2)
+df_demo <- data.frame(
+  team  = LETTERS[1:5],
+  reach = c(412, 538, 297, 614, 480)
+)
+ggplot(df_demo, aes(team, reach, fill = team)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#047B77","#1A9490","#65BAB5",
+                               "#9FD3D0","#CDEAE8")) +
+  labs(title = "Beneficiaries by team",
+       x = NULL, y = "Reach") +
+  theme_minimal(base_size = 14)
+```
+
+### Manual card
+
+```markdown
+::: {.card title="Key finding"}
+Write any **markdown** here.
+
+- Bullet one
+- Bullet two
+:::
+```
+
+Use a manual `.card` div for **text-only** cards (key findings, notes).
+
+:::
+
+::: {.callout-tip}
+`#| expandable: true` adds a fullscreen button to any card.
+:::
+
+---
+
+## Value Box: Syntax {.smaller}
+
+::: {.panel-tabset}
+
+### code
+::: {.columns}
+::: {.column width="55%"}
+````{.markdown filename="valuebox.qmd"}
+## KPI row {height=20%}
+```{{r vbox1}}
+#| content: valuebox
+#| title: "Beneficiaries"
+#| icon: people-fill
+#| color: "#047B77"
+list(value = scales::comma(14823))
+```
+```{{r vbox2}}
+#| content: valuebox
+#| title: "Woredas"
+#| color: "#1A9490"
+list(value = 16)
+```
+````
+:::
+::: {.column width="45%"}
+**Dynamic value**
+````r
+list(value = scales::comma(
+  sum(df$beneficiaries)))
+````
+**Color options**
+````r
+#| color: primary | success | warning | danger
+#| color: "#047B77"   # teal
+#| color: "#F7941D"   # orange
+````
+**Trend indicator**
+````r
+change <- round((cur-prev)/prev*100, 1)
+list(value = paste0("↑ ", change, "%"))
+````
+:::
+:::
+::: {.callout-tip}
+Find icon names at <https://icons.getbootstrap.com> - search any concept and copy the name (e.g. `graph-up`, `geo-alt-fill`, `people-fill`).
+:::
+
+### Summary
+
+![](fig5.png){fig-align="center" width="80%" height="300px"}
+
+:::   
+
+---
+
+## Overview {.smaller}
+
+::: {.panel-tabset}
+
+### Value Boxes + Charts
+
+````{.markdown filename="page1_overview.qmd"}
+# Overview
+## KPIs {height=20%}
+```{{r}}
+#| content: valuebox
+#| title: "Beneficiaries"
+#| icon: people-fill
+#| color: "#047B77"
+list(value = scales::comma(sum(df$reach)))
+```
+```{{r}}
+#| content: valuebox
+#| title: "Woredas"
+#| color: "#1A9490"
+list(value = n_distinct(df$woreda))
+```
+## Charts {height=78% .tabset}
+### By team
+```{{r}}
+#| title: "Reach by team"
+ggplot(df, aes(team, reach, fill = team)) +
+  geom_col() + theme_c4ed()
+```
+````
+
+### Output
+
+![](fig6.png){fig-align="center" width="60%" height="400px"}
+
+
+::: {.callout-note}
+Result: three KPI value boxes on top, a tabbed chart row below. Same skeleton works for every monitoring dashboard.
+:::
+
+:::
+
+---
+
+## Tabsets: Multiple Views, One Row {.medium}
+
+::: {.columns}
+
+::: {.column width="55%"}
+
+````{.markdown filename="tabset.qmd"}
+## Analysis {.tabset}      # ← key
+### By team                # tab 1
+```{{r}}
+plot_by_team()
+```
+### By month               # tab 2
+```{{r}}
+plot_by_month()
+```
+### Raw data               # tab 3
+```{{r}}
+DT::datatable(my_data)
+```
+````
+
+::: 
+
+::: {.column width="45%"}
+
+**Rules**
+
+- Add `{.tabset}` to a `## Row` heading to activate
+- `###` sub-headings become individual tab labels
+- Works for charts, tables, text - any card content
+- Combine with value boxes: KPIs on top, tabs below
+
+::: {.callout-tip}
+Use tabsets when you have **3+ views** of the same data. For 2 views, side-by-side columns often look cleaner.
+:::
+
+:::
+:::
+
+---
+
+## Tabsets - Live Demo {.medium}
+
+The same data, three lenses - click the tabs:
+
+::: {.panel-tabset}
+
+### By team
+
+```{r}
+#| label: tab-team
+#| echo: false
+#| fig-align: center
+library(ggplot2)
+df_demo <- data.frame(
+  team  = LETTERS[1:5],
+  reach = c(412, 538, 297, 614, 480))
+ggplot(df_demo, aes(team, reach, fill = team)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#047B77","#1A9490","#65BAB5",
+                               "#9FD3D0","#CDEAE8")) +
+  labs(x = NULL, y = "Reach") +
+  theme_minimal(base_size = 14)
+```
+
+### By month
+
+```{r}
+#| label: tab-month
+#| echo: false
+#| fig-align: center
+month_df <- data.frame(
+  month = factor(month.abb[1:6], levels = month.abb[1:6]),
+  reach = c(220, 410, 690, 980, 1450, 1980))
+ggplot(month_df, aes(month, reach, group = 1)) +
+  geom_line(color = "#047B77", linewidth = 1.3) +
+  geom_point(color = "#047B77", size = 3) +
+  labs(x = NULL, y = "Cumulative reach") +
+  theme_minimal(base_size = 14)
+```
+
+### Interactive (plotly)
+
+```{r}
+#| label: tab-plotly
+#| echo: false
+#| message: false
+library(plotly)
+p <- ggplot(df_demo,
+            aes(team, reach, fill = team,
+                text = paste0("Team: ", team,
+                              "<br>Reach: ", scales::comma(reach)))) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_manual(values = c("#047B77","#1A9490","#65BAB5",
+                               "#9FD3D0","#CDEAE8")) +
+  labs(x = NULL, y = "Reach") +
+  theme_minimal(base_size = 13)
+ggplotly(p, tooltip = "text") |>
+  plotly::config(displayModeBar = FALSE)
+```
+
+### Raw data
+
+```{r}
+#| label: tab-data
+#| echo: false
+knitr::kable(df_demo, caption = "Reach by team (demo data)")
+```
+
+:::
+
+---
+
+
+
+## Full Dashboard Structure {.smaller}
+
+::: {.columns}
+
+::: {.column width="55%"}
+````{.markdown filename="dashboard.qmd"}
+---
+title: "C4ED Programme Dashboard"
+format:
+  dashboard:
+    theme: flatly
+    orientation: rows
+    scrolling: true
+    logo: img/c4ed_logo.png
+execute:
+  echo: false
+  warning: false
+---
+```{{r setup, include=FALSE}}
+library(ggplot2); library(dplyr)
+library(DT);      library(leaflet)
+df <- readr::read_csv("data/field_data.csv")
+```
+# Overview      # value boxes + charts
+# Daily         # trend + map + table
+# Data          # interactive DT tables
+# KPI           # summary stats
+````
+:::
+
+::: {.column width="45%"}
+**Build in this order**
+
+1. Write YAML header
+2. Create a `setup` chunk
+3. Add `#` page headings
+4. Add `##` rows (with `{height=N%}`)
+5. Add `###` columns (with `{width=N%}`)
+6. Add code chunks
+7. Render and iterate (`Ctrl+Shift+K`)
+:::
+
+:::
+
+
+---
+
+
+## Workflow Tips {.medium}
+
+1. **Start with structure only** - add all `#` `##` `###` headings with placeholder text. Render to check layout **before** any code.
+2. **One chunk = one card** - never put two `ggplot()` calls in one chunk if you want separate cards.
+3. **`echo: false` globally** - set in YAML `execute:` block once. Never accidentally expose code to stakeholders.
+4. **Name every chunk** - `{r valuebox-reach}`, `{r chart-country}` make debugging much faster.
+5. **Test heights iteratively** - row heights that look good locally may shift on a projector. Aim for values that sum to **~95%**.
+
+
+### Common Errors
+
+| Error | Fix |
+|---|---|
+| Blank white page | Check YAML indentation |
+| Cards overlapping | Reduce `{height=N%}` values |
+| Code visible in output | Add `echo: false` in `execute:` |
+| Empty value box | Return must be a `list()` |
+| Icon not showing | Check spelling on `icons.getbootstrap.com` |
+| "skipped heading level" warning | Don't jump from `#` to `###` - go through `##` |
+
+
+
+---
+
+## Quick Reference Card {.medium}
+
+::: {.columns}
+
+::: {.column width="50%"}
+
+````{.markdown filename="quick_ref.qmd"}
+# Structure (Markdown headings)
+# Page              # navigation tab
+## Row              # horizontal band   {height=N%}
+### Column          # column in row     {width=N%}
+
+# Row/column modifiers
+{.tabset}           # tabbed row
+{.sidebar}          # left sidebar panel
+{.scrollable}       # allow row to scroll
+{.fill}             # stretch to fill row
+
+# Code chunk options
+#| content: valuebox    # make a value box
+#| title: "label"       # card header title
+#| icon: people         # Bootstrap icon name
+#| color: "#047B77"     # background color
+#| fig-height: 4        # plot height (inches)
+#| fig-width: 8         # plot width
+#| padding: 0px         # remove card padding
+#| expandable: true     # fullscreen button
+````
+
+::: 
+
+::: {.column width="50%"}
+**Resources**
+
+- 📚 Docs - <https://quarto.org/docs/dashboards>
+- 🎨 Themes - <https://bootswatch.com>
+- 🔣 Icons - <https://icons.getbootstrap.com>
+- 📊 ggplot2 - <https://ggplot2.tidyverse.org>
+
+::: {.callout-tip}
+Add `server: shiny` to YAML → full Shiny app. Then use `input$` and `output$` as normal.
+:::
+
+:::
+
+:::
+
+---
+
+## Example
+
+::: {style="text-align:center; color:red;"}
+
+
+::: {style="margin-top: 1.2em; font-size: 1.85em;"}
+
+Live demo: <https://yebelay.github.io/WB-ETH-dashboard/><br>
+
+:::
+
+
+:::
+
+
+---
+
+## {background-color="#047B77" .center}
+
+::: {style="text-align:center; color:white;"}
+
+
+
+[**Thank you!**]{style="font-size: 3em;"}
+
+
+::: {style="margin-top: 1.2em; font-size: 0.85em;"}
+**Yebelay Berehan. C4ED Ethiopia** · <br> [yebelay.berehan@c4ed.org](mailto:yebelay.berehan@c4ed.org)
+:::
+:::
