@@ -1,0 +1,1299 @@
+---
+title: "P25322_WB LLRP I Field Activity"
+subtitle: "MSE Baseline · C4ED"
+logo: logo.png
+format:
+  dashboard:
+    theme: flatly
+    nav-buttons: 
+      - icon: gitlab
+        href: "https://github.com/yebelay"
+    orientation: rows
+    scrolling: true
+    embed-resources: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+source("R/process_data.R")
+```
+
+```{r helpers}
+#| include: false
+library(htmltools)
+library(glue)
+library(plotly)
+library(dplyr)
+library(bslib)
+
+pal <- list(
+  navy  = "#004D40",
+  blue  = "#00796B",
+  green = "#00695C",
+  amber = "#26A69A",
+  red   = "#4DB6AC",
+  gray  = "#E0F2F1",
+  t6    = c("#004D40","#00695C","#00897B","#26A69A","#80CBC4","#B2DFDB"),
+  arms  = c(Control="#B2DFDB", `Human-led Training`="#00897B",
+            `Tech-based Training`="#004D40"))
+
+pl_layout <- function(p, ...) {
+  layout(p,
+    font          = list(family = "Segoe UI, Arial", size = 11, color = "#595959"),
+    paper_bgcolor = "rgba(0,0,0,0)",
+    plot_bgcolor  = "rgba(0,0,0,0)",
+    margin        = list(l = 40, r = 10, t = 30, b = 40),
+    legend        = list(orientation = "h", y = 1.12, x = 0,
+                         font = list(size = 10), bgcolor = "rgba(0,0,0,0)"),
+    ...
+  )
+}
+
+data_tag <- tags$script(HTML(paste0("const D=", D_js, ";")))
+
+helpers_js <- tags$script(HTML('
+const C={
+  navy:"#004D40",blue:"#00796B",green:"#00695C",amber:"#26A69A",
+  red:"#4DB6AC",gray:"#E0F2F1",
+  t6:["#004D40","#00695C","#00897B","#26A69A","#80CBC4","#B2DFDB"],
+  tc:{Daniel:"#009688",Anteneh:"#00796B",Wesen:"#4DB6AC",Muktar:"#80CBC4"},
+  arms:{"Control":"#B2DFDB","Human-led Training":"#00897B",
+        "Tech-based Training":"#004D40"}
+};
+function pc(p){return p>=100?C.green:p>=60?C.blue:p>=30?C.amber:C.red}
+function pill(s){
+  if(s==="Complete")    return\'<span class="pill pc">✅ Complete</span>\';
+  if(s==="In Progress") return\'<span class="pill pip">🔄 In Progress</span>\';
+  return\'<span class="pill pn">⏳ Not Started</span>\';
+}
+const lbs=D.daily.map(d=>d.date);
+const mRP=D.daily.map(d=>d.mse_pace);
+const sRP=D.daily.map(d=>d.sp_pace);
+'))
+
+kpi_card <- function(label, value, sub, bar_pct = NULL, color_class = "") {
+  bar_html <- if (!is.null(bar_pct)) {
+    glue('<div class="kb"><div class="kf {color_class}" style="width:{min(bar_pct,100)}%"></div></div>')
+  } else ""
+  HTML(glue('
+    <div class="kpi {color_class}">
+      <div class="kl">{label}</div>
+      <div class="kv">{value}</div>
+      <div class="ks">{sub}</div>
+      {bar_html}
+    </div>
+  '))
+}
+```
+
+```{r css}
+#| output: asis
+cat('<style>
+:root{
+  --navy:#0C6D71;--teal:#00796B;--dk-teal:#004D40;
+  --blue:#E0F2F1;--lb:#B2DFDB;--vlb:#E0F2F1;
+  --green:#00695C;--lg:#E0F2F1;--gt:#004D40;
+  --amber:#26A69A;--la:#B2DFDB;--at:#00695C;
+  --red:#4DB6AC;--lr:#E0F2F1;--gray:#F2F2F2;
+  --dg:#595959;--border:#B2DFDB;--white:#fff;
+  --font:\'Segoe UI\',Arial,sans-serif
+}
+*{box-sizing:border-box}
+body{font-family:var(--font);font-size:18px}
+
+/* ── Navbar ── */
+.navbar,
+.navbar-default,
+.quarto-dashboard .navbar {
+  background-color:#0C6D71 !important;
+  border-bottom:none !important;
+}
+.navbar .navbar-brand,
+.navbar .navbar-brand *,
+.navbar-title,
+.navbar-subtitle,
+.quarto-dashboard-title,
+.quarto-dashboard-subtitle { color:#ffffff !important; opacity:1 !important; }
+.navbar .nav-link,
+.navbar .nav-item a,
+.navbar .navbar-nav .nav-link,
+.navbar-default .navbar-nav > li > a,
+.quarto-dashboard .navbar .nav-link { color:#ffffff !important; opacity:1 !important; }
+.navbar .nav-link.active,
+.navbar .nav-item.active > a {
+  background-color:rgba(255,255,255,0.18) !important;
+  color:#ffffff !important;
+  border-radius:6px;
+}
+.navbar .nav-link:hover {
+  background-color:rgba(255,255,255,0.10) !important;
+  color:#ffffff !important;
+}
+.navbar .bi,
+.navbar svg { color:#ffffff !important; fill:#ffffff !important; }
+.navbar .nav-button,
+.navbar .btn,
+.navbar .quarto-nav-button { color:#ffffff !important; }
+
+/* Force title + subtitle to stack */
+.navbar-brand {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+}
+
+/* Target ALL possible title/subtitle classes */
+.navbar-title,
+.quarto-dashboard-title {
+  display: block !important;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.navbar-subtitle,
+.quarto-dashboard-subtitle {
+  display: block !important;
+  font-size: 11px;
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
+/* ── bslib value_box base ── */
+/* Longhands only — never shorthand border-left — so inline style= can override color */
+.bslib-value-box {
+  background:        #fff !important;
+  border:            none !important;
+  border-left-width: 4px !important;
+  border-left-style: solid !important;
+  border-left-color: #B2DFDB !important;
+  border-radius:     8px !important;
+  box-shadow:        0 1px 3px rgba(0,0,0,.07) !important;
+  min-height:        unset !important;
+  padding:           0 !important;
+  position:          relative !important;
+  overflow:          hidden !important;
+}
+.bslib-value-box .value-box-grid {
+  display:        flex !important;
+  flex-direction: column !important;
+  padding:        10px 13px 16px !important;
+  gap:            2px !important;
+}
+.bslib-value-box .value-box-showcase { display:none !important; }
+.bslib-value-box .value-box-area     { padding:0 !important; }
+.bslib-value-box .value-box-title {
+  font-size:      9px !important;
+  color:          var(--dg) !important;
+  text-transform: uppercase !important;
+  letter-spacing: .5px !important;
+  font-weight:    600 !important;
+  margin:         0 !important;
+  opacity:        1 !important;
+}
+.bslib-value-box .value-box-value {
+  font-size:   24px !important;
+  font-weight: 700 !important;
+  color:       var(--navy) !important;
+  line-height: 1.1 !important;
+  margin:      0 !important;
+}
+.bslib-value-box p {
+  font-size:   9px !important;
+  color:       var(--dg) !important;
+  font-weight: 400 !important;
+  margin:      0 !important;
+}
+
+/* ── Progress bar at bottom via ::after ──
+   Reads --vb-bar-color and --vb-pct from inline style= on the element.
+   Variant classes set sensible defaults; inline style= overrides freely.      */
+.bslib-value-box::after {
+  content:       "";
+  position:      absolute;
+  bottom:        10px;
+  left:          4px;
+  height:        6px;
+  width:         100%;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(
+    to right,
+    var(--vb-bar-color, #B2DFDB) var(--vb-pct, 0%),
+    #E0F2F1                      var(--vb-pct, 0%)
+  );
+}
+
+/* ── Per-variant defaults ──
+   border-left-color  : accent colour for the left stripe
+   --vb-bar-color     : default bar colour (can be overridden per-box via style=)
+   Inline style= on the value_box() call wins over all of these.               */
+.bslib-value-box.vb-green {
+  border-left-color: #00695C !important;
+  --vb-bar-color:    #00695C;
+}
+.bslib-value-box.vb-amber {
+  border-left-color: #ff8d00 !important;
+  --vb-bar-color:    #26A69A;
+}
+.bslib-value-box.vb-red {
+  border-left-color: #4DB6AC !important;
+  --vb-bar-color:    #4DB6AC;
+}
+
+/* ── KPI cards (custom HTML) ── */
+.kr{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.kpi{background:#fff;border-radius:8px;padding:12px 14px;
+     border-left:4px solid var(--lb);box-shadow:0 1px 3px rgba(0,0,0,.07);
+     min-width:130px;flex:1}
+.kpi.g{border-left-color:var(--green)}
+.kpi.a{border-left-color:var(--amber)}
+.kpi.r{border-left-color:var(--red)}
+.kl{font-size:9px;color:var(--dg);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.kv{font-size:24px;font-weight:700;color:var(--navy);line-height:1.1}
+.ks{font-size:9px;color:var(--dg);margin-top:3px}
+.kb{height:4px;background:var(--border);border-radius:2px;margin-top:7px}
+.kf{height:100%;border-radius:2px;transition:width .8s}
+.kf.b{background:var(--teal)}.kf.g{background:var(--green)}
+.kf.a{background:var(--amber)}.kf.r{background:var(--red)}
+
+/* ── Alert banners ── */
+.alert{padding:9px 14px;border-radius:6px;font-size:11px;margin-bottom:12px}
+.aw{background:#FFF9E6;border:1px solid var(--la);color:var(--at)}
+.ad{background:var(--lr);border:1px solid var(--red);color:var(--red)}
+.ag{background:var(--lg);border:1px solid #A9D18E;color:var(--gt)}
+.alert strong{font-weight:700}
+
+/* ── Section headers ── */
+.sec{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;
+     letter-spacing:.5px;padding-left:8px;border-left:3px solid var(--teal);
+     margin:16px 0 10px}
+
+/* ── Chart containers ── */
+.cg{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
+.cg3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px}
+.cw{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
+.cc{background:#fff;border-radius:8px;padding:13px 15px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.cc h3{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;
+        letter-spacing:.4px;margin-bottom:8px}
+.ch{position:relative}
+
+/* ── Tables ── */
+.tc{background:#fff;border-radius:8px;padding:13px 15px;
+    box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:12px;overflow-x:auto}
+.tc h3{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;
+       letter-spacing:.4px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--navy);color:#fff;padding:6px 9px;text-align:left;
+   font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:5px 9px;border-bottom:1px solid var(--border)}
+tr:nth-child(even) td{background:#F8FAFC}
+tr:hover td{background:var(--vlb)}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}
+.pc{background:var(--lg);color:var(--gt)}
+.pip{background:var(--la);color:var(--at)}
+.pn{background:var(--gray);color:var(--dg)}
+.pr{background:var(--lr);color:var(--red)}
+.mb{display:flex;align-items:center;gap:5px}
+.mbt{flex:1;height:5px;background:var(--border);border-radius:3px;min-width:50px}
+.mbf{height:100%;border-radius:3px}
+.mv{font-weight:700;font-size:10px;min-width:32px}
+tr.fur td{background:#FFF0F0!important}
+tr.fur:hover td{background:var(--lr)!important}
+.mb2{background:var(--red);color:#fff;font-size:9px;font-weight:700;
+     padding:1px 6px;border-radius:8px}
+
+/* ── Quarto card padding ── */
+.card-body{padding:8px 10px !important}
+.card-header{padding:6px 10px !important;font-size:10px !important}
+</style>')
+```
+
+```{r inject_data}
+#| output: asis
+cat(as.character(tagList(data_tag, helpers_js)))
+```
+
+# Overview
+
+## Note {height="auto"}
+
+```{r ov_alert}
+#| output: asis
+HTML(glue('
+<div class="alert" style="background:#FFF8E1;border:1px solid #FFD54F;color:#3E2723;font-size:12px;">
+  <strong>⚠️{k$data_date} Status: {k$mse_i} MSE members ({k$mse_u} MSEs) interviewed·
+  🔴 {k$mse_incomp} MSEs need follow-up (missing respondents)·
+  {k$sp_i} spouse interviews·
+  🔴 {k$sp_incomp} MSEs need 2nd spouse -
+  <span style="color:#E65100;text-decoration:underline;">see Follow-up Alerts tab</span></strong>
+</div>'))
+```
+
+## Value boxes {height="100px"}
+
+```{r vb_mse_i}
+# --vb-bar-color controls the bottom bar independently of border-left-color
+# Pass different hex values to have them differ, or the same to match.
+mse_pct_num <- as.numeric(k$mse_pct)
+value_box(
+  title    = "Total Interviewed Respondents",
+  value    = k$mse_i,
+  showcase = NULL,
+  p(paste0("of 2,160 target (", k$mse_pct, "%)")),
+  class    = "vb-green",
+  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#13D4D4; --vb-pct:{mse_pct_num}%;"))
+```
+
+```{r vb_mse_comp}
+mse_comp_pct <- round(as.numeric(k$mse_comp) / 360 * 100)
+value_box(
+  title    = "MSEs Complete 6/6",
+  value    = k$mse_comp,
+  showcase = NULL,
+  p("of 360 MSE target"),
+  class    = "vb-red",
+  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#13D4D4; --vb-pct:{mse_comp_pct}%;")
+)
+```
+
+
+```{r vb_mse_incomp}
+#| content: valuebox
+#| title: "MSEs Incomplete"
+list(value=k$mse_incomp, 
+     caption="need follow-up upload", 
+     color = "white",
+     icon=NULL,
+     style    = glue("border-left-color:#4DB6AC !important"))
+```
+
+```{r vb_sp_i}
+sp_pct_num <- as.numeric(k$sp_pct)
+value_box(
+  title    = "Total Spouses interviewed",
+  value    = k$sp_i, 
+  showcase = NULL,
+  p(paste0("of 480 target (", k$sp_pct, "%)")),
+  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#13D4D4; --vb-pct:{sp_pct_num}%;"))
+```
+
+```{r vb_sp_comp}
+#| content: valuebox
+#| title: "Spouse 2/2 Complete"
+list(value=k$sp_comp, caption="MSEs with both spouses", 
+     color="#20c997", 
+     icon=NULL)
+```
+
+```{r vb_sp_incomp}
+#| content: valuebox
+#| title: "Spouse Incomplete"
+list(value=k$sp_incomp, caption="only 1/2 submitted", 
+     color = "white", icon=NULL)
+```
+
+```{r vb_woredas}
+#| content: valuebox
+#| title: "Woredas Active"
+list(value=k$woredas_active, caption="of 36 total", color="white", icon=NULL)
+```
+
+```{r vb_days}
+#| content: valuebox
+#| title: "Field Days"
+list(value=k$n_days, caption=paste0(k$date_start," – ",k$date_end), 
+     color= "white", icon=NULL)
+```
+
+
+## Row {height="300px"}
+
+```{r ov_chart2}
+#| title: "📊 Daily MSE & Spouse Interviews"
+plot_ly(daily, x = ~date) |>
+  add_bars(y = ~mse_i, name = "MSE",    marker = list(color = pal$blue,  line = list(width = 0))) |>
+  add_bars(y = ~sp_i,  name = "Spouse", marker = list(color = pal$amber, line = list(width = 0))) |>
+  pl_layout(barmode = "group", yaxis = list(rangemode = "tozero", title = ""),
+xaxis = list(
+      tickangle = -45,
+      dtick = "D1",
+      tickformat = "%b %d",
+      tickfont = list(size = 10))) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r ov_chart3}
+#| title: "✅ MSE Completion Status (360 total)"
+mse_complete   <- k$mse_comp
+mse_incomplete <- nrow(fu_mse_tbl)
+mse_notstarted <- max(360 - mse_complete - mse_incomplete, 0)
+plot_ly(
+  labels = c(paste0("Complete 6/6 (", mse_complete, ")"),
+             paste0("Underway (", mse_incomplete, ")"),
+             "Not Started"),
+  values = c(mse_complete, mse_incomplete, mse_notstarted),
+  type   = "pie", hole = 0.55,
+  marker = list(colors = c(pal$green, pal$amber, pal$gray),
+                line = list(color = "#fff", width = 2)),
+  textinfo = "label+percent"
+) |>
+  pl_layout(showlegend = TRUE, legend = list(orientation = "v", x = 1, y = 0.5)) |>
+  config(displayModeBar = FALSE)
+```
+
+## Row {height="250px"}
+
+```{r ov_chart4}
+#| title: "👥 Interviews by Team"
+# team6_sum is already in environment from process_data.R
+team6 <- team6_sum
+plot_ly(team6, x = ~team, y = ~i, type = "bar",
+        marker = list(color = pal$t6, line = list(width = 0)),
+        name = "Interviews") |>
+  pl_layout(showlegend = FALSE, yaxis = list(rangemode = "tozero", title = "")) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r ov_chart5}
+#| title: "🔬 Treatment Arm Balance"
+# arm_sum is already in environment from process_data.R
+arm <- arm_sum
+arm_colors <- ifelse(arm$a %in% names(pal$arms), pal$arms[arm$a], pal$gray)
+plot_ly(
+  labels = arm$a, values = arm$i, type = "pie", hole = 0.55,
+  marker = list(colors = arm_colors, line = list(color = "#fff", width = 2)),
+  textinfo = "label+percent"
+) |>
+  pl_layout(showlegend = TRUE, legend = list(orientation = "v", x = 1, y = 0.5)) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r ov_chart6}
+#| title: "Spouse Status (240 treatment MSEs)"
+sp_comp_ov    <- sum(team6$sp_comp, na.rm = TRUE)
+sp_incomp_ov  <- nrow(fu_sp_tbl)
+sp_started_ov <- sum(team6$sm, na.rm = TRUE)
+plot_ly(
+  labels = c(paste0("2/2 Complete (", sp_comp_ov, ")"),
+             paste0("1/2 Only (", sp_incomp_ov, ")"),
+             "Not yet"),
+  values = c(sp_comp_ov, sp_incomp_ov, max(240 - sp_started_ov, 0)),
+  type = "pie", hole = 0.55,
+  marker = list(colors = c(pal$green, pal$amber, pal$gray),
+                line = list(color = "#fff", width = 2)),
+  textinfo = "label+percent"
+) |>
+  pl_layout(showlegend = TRUE, legend = list(orientation = "v", x = 1, y = 0.5)) |>
+  config(displayModeBar = FALSE)
+```
+
+# 🔔 Follow-up 
+
+## Row {height="auto"}
+
+```{r fu_alert}
+#| output: asis
+HTML(glue('
+<div class="alert" style="background:#FFF8E1;border:1px solid #FFD54F;color:#3E2723;font-size:12px;">
+  <strong>🔔 ACTION REQUIRED:</strong>
+  {k$mse_incomp} MSEs have fewer than 6 interviews uploaded.
+  {k$sp_incomp} MSEs have only 1 spouse interview.
+  Notify the relevant supervisor to upload missing data from SurveyCTO.
+</div>
+'))
+```
+
+## Row
+
+```{r fu_chart1}
+#| title: "⚠️ Follow-up by Team (MSE)"
+plot_ly(team6, x = ~team, y = ~fu_mse, type = "bar",
+        marker = list(color = pal$t6, line = list(width = 0)),
+        name = "MSEs needing follow-up") |>
+  pl_layout(showlegend = FALSE, yaxis = list(rangemode = "tozero", dtick = 1, title = "")) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r fu_chart2}
+#| title: "⚠️ Follow-up by Team (Spouse)"
+plot_ly(team6, x = ~team, y = ~fu_sp, type = "bar",
+        marker = list(color = pal$t6, line = list(width = 0)),
+        name = "Spouse follow-up needed") |>
+  pl_layout(showlegend = FALSE, yaxis = list(rangemode = "tozero", dtick = 1, title = "")) |>
+  config(displayModeBar = FALSE)
+```
+
+## Row {height="auto"}
+
+```{r fu_table_mse}
+#| output: asis
+HTML(paste0('
+<div class="sec">⚠️ MSE Follow-up -', k$mse_incomp, ' MSEs Missing Respondents</div>
+<div class="tc">
+  <h3>Notify supervisor to upload remaining interviews from SurveyCTO</h3>
+  <table><thead><tr>
+    <th>MSE ID</th><th>Woreda</th><th>Zone</th><th>Team</th><th>Supervisor</th>
+    <th>Treatment Arm</th><th>Submitted</th><th>Missing</th><th>Last Upload</th><th>Action</th>
+  </tr></thead><tbody id="tFuM"></tbody></table>
+</div>
+<div class="sec">Spouse Follow-up - ', k$sp_incomp, ' MSEs Missing 2nd Spouse</div>
+<div class="tc">
+  <h3>2nd spouse interview not yet uploaded</h3>
+  <table><thead><tr>
+    <th>MSE ID</th><th>Woreda</th><th>Team</th><th>Supervisor</th>
+    <th>Treatment Arm</th><th>Submitted</th><th>Missing</th><th>Last Upload</th><th>Action</th>
+  </tr></thead><tbody id="tFuS"></tbody></table>
+</div>
+<script>
+document.getElementById("tFuM").innerHTML=D.fu_mse.map(r=>
+  `<tr class="fur"><td><strong>${r.id}</strong></td><td>${r.w}</td><td>${r.z}</td>
+  <td>${r.team}</td><td><strong>${r.sup}</strong></td><td>${r.arm}</td>
+  <td>${r.i}/6</td><td><span class="mb2">Need ${r.miss}</span></td>
+  <td>${r.dl}</td><td>📢 Notify ${r.sup}</td></tr>`).join("");
+document.getElementById("tFuS").innerHTML=D.fu_sp.map(r=>
+  `<tr class="fur"><td><strong>${r.id}</strong></td><td>${r.w}</td>
+  <td>${r.team}</td><td><strong>${r.sup}</strong></td><td>${r.arm}</td>
+  <td>${r.i}/2</td><td><span class="mb2">Need ${r.miss}</span></td>
+  <td>${r.dl}</td><td>📢 Notify ${r.sup}</td></tr>`).join("");
+</script>
+'))
+```
+
+# Daily Progress
+
+## Row
+
+```{r dy_chart_pace}
+#| title: "📈 Cumulative Progress vs Required Pace (2,160 MSE + 480 Spouse targets)"
+plot_ly(daily, x = ~date) |>
+  add_trace(y = ~cum_mse,  name = "MSE Actual", type = "scatter", mode = "lines+markers",
+            line = list(color = pal$blue,  width = 2.5),
+            marker = list(size = 6, color = pal$blue),
+            fill = "tozeroy", fillcolor = "rgba(0,121,107,.12)") |>
+  add_trace(y = ~mse_pace, name = "MSE Pace",       type = "scatter", mode = "lines",
+            line = list(color = pal$blue, dash = "dash", width = 1.5),
+            marker = list(size = 0)) |>
+  add_trace(y = ~cum_sp,   name = "Spouse Actual",  type = "scatter", mode = "lines+markers",
+            line = list(color = pal$amber, width = 2),
+            marker = list(size = 6, color = pal$amber),
+            fill = "tozeroy", fillcolor = "rgba(38,166,154,.10)") |>
+  add_trace(y = ~sp_pace,  name = "Spouse Pace",    type = "scatter", mode = "lines",
+            line = list(color = pal$amber, dash = "dash", width = 1.5),
+            marker = list(size = 0)) |>
+  pl_layout(yaxis = list(rangemode = "tozero", title = ""),
+            xaxis = list(
+      tickangle = -45,
+      dtick = "D1",
+      tickformat = "%b %d",
+      tickfont = list(size = 10)  ),
+
+    legend = list(
+      orientation = "h",  x = 0, y = 1.15    )) |>
+  config(displayModeBar = TRUE)
+```
+
+
+## Row
+
+```{r dy_chart_mse}
+#| title: "MSE Interviews per Day"
+plot_ly(daily, x = ~date, y = ~mse_i, type = "bar",
+        marker = list(color = pal$blue, line = list(width = 0))) |>
+  pl_layout(showlegend = FALSE, yaxis = list(rangemode = "tozero", title = ""), 
+            xaxis = list(
+      tickangle = -45,
+      dtick = "D1",
+      tickformat = "%b %d",
+      tickfont = list(size = 10)  )) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r dy_chart_sp}
+#| title: "Spouse Interviews per Day"
+plot_ly(daily, x = ~date, y = ~sp_i, type = "bar",
+        marker = list(color = pal$amber, line = list(width = 0))) |>
+  pl_layout(showlegend = FALSE, yaxis = list(rangemode = "tozero", title = ""),
+            xaxis = list(
+      tickangle = -45,
+      dtick = "D1",
+      tickformat = "%b %d",
+      tickfont = list(size = 10)  )) |>
+  config(displayModeBar = FALSE)
+```
+
+## Row {height="auto"}
+
+```{r dy_table}
+#| output: asis
+HTML('
+<div class="tc"><h3>Day-by-Day Summary</h3>
+<table><thead><tr>
+  <th>Date</th><th>MSE memberes Interviewed</th><th>Spouse Interviewed</th><th>Cum. MSE</th><th>Cum. Spouse</th><th>% MSE Target</th>
+</tr></thead><tbody id="tDay"></tbody></table></div>
+<script>
+document.getElementById("tDay").innerHTML=D.daily.map(d=>`
+  <tr><td><strong>${d.date}</strong></td><td>${d.mse_i}</td>
+  <td>${d.sp_i}</td><td><strong>${d.cum_mse}</strong></td><td><strong>${d.cum_sp}</strong></td>
+  <td><div class="mb"><div class="mbt"><div class="mbf" style="width:${Math.min(d.cum_mse/2160*100,100).toFixed(1)}%;background:${pc(d.cum_mse/2160*100)}"></div></div>
+  <span class="mv">${(d.cum_mse/2160*100).toFixed(1)}%</span></div></td></tr>`).join("");
+</script>
+')
+```
+
+# Teams
+
+## Row
+
+```{r tm_chart1}
+#| title: "MSE Interviews by Team"
+plot_ly(team6, x = ~team) |>
+  add_bars(y = ~comp,  name = "Complete 6/6",
+           marker = list(color = "#00695C", line = list(width = 0))) |>
+  add_bars(y = ~incomp, name = "Incomplete",
+           marker = list(color = "#26A69A", line = list(width = 0))) |>
+  pl_layout(barmode = "stack", yaxis = list(rangemode = "tozero", title = "")) |>
+  config(displayModeBar = T)
+```
+
+```{r tm_chart2}
+#| title: "Enumerator Interviews (Top 20)"
+enums_top20 <- enum_sum |> arrange(desc(i)) |> head(20)
+plot_ly(enums_top20,
+        y = ~paste0(e, " (", sup, ")"), x = ~i,
+        type = "bar", orientation = "h",
+        marker = list(color = pal$blue, line = list(width = 0))) |>
+  pl_layout(showlegend = FALSE,
+            yaxis = list(categoryorder = "total ascending", title = ""),
+            xaxis = list(rangemode = "tozero", title = "Interviews"),
+            margin = list(l = 130, r = 10, t = 30, b = 40)) |>
+  config(displayModeBar = FALSE)
+```
+
+## Row {height="auto"}
+
+```{r tm_table1}
+#| output: asis
+HTML('
+<div class="tc"><h3>Team Summary (by Individual Team A-F)</h3>
+<table><thead><tr>
+  <th>Team</th><th>MSE Interviews</th><th>MSEs Active</th><th>Complete 6/6</th>
+  <th>Incomplete</th><th>Spouse Interviews</th><th>MSE Follow-up</th><th>Spouse Follow-up</th>
+</tr></thead><tbody id="tTm"></tbody></table></div>
+<div class="tc"><h3>Enumerator Detail</h3>
+<table><thead><tr>
+  <th>Supervisor</th><th>Enumerator</th><th>Interviews</th><th>MSEs</th><th>Avg/MSE</th>
+</tr></thead><tbody id="tEn"></tbody></table></div>
+<script>
+document.getElementById("tTm").innerHTML=D.team6.map(t=>`
+  <tr>
+    <td><strong>${t.team}</strong></td>
+    <td>${t.i}</td><td>${t.m}</td>
+    <td><span style="color:#00695C;font-weight:700">${t.comp}</span></td>
+    <td>${t.incomp>0?`<span class="mb2">${t.incomp}</span>`:"✅ 0"}</td>
+    <td>${t.si||0}</td>
+    <td>${t.fu_mse>0?`<span class="mb2">${t.fu_mse} MSEs</span>`:"✅ 0"}</td>
+    <td>${t.fu_sp>0?`<span class="mb2">${t.fu_sp} MSEs</span>`:"✅ 0"}</td>
+  </tr>`).join("");
+document.getElementById("tEn").innerHTML=D.enums.map(e=>`
+  <tr><td>${e.sup}</td><td><strong>${e.e}</strong></td><td>${e.i}</td><td>${e.m}</td>
+  <td>${(e.i/e.m).toFixed(1)}</td></tr>`).join("");
+</script>
+')
+```
+
+# Treatment Arms
+
+## Row {height="110px"}
+
+```{r ar_vb_control}
+#per_c <- as.numeric(arm_ctrl$p)
+arm_ctrl <- arm_sum[arm_sum$a == "Control", ]
+value_box(
+  title    = "Control",
+  value    = arm_ctrl$i,
+  showcase = bsicons::bs_icon("circle"),
+  p(paste0(arm_ctrl$m, " MSEs · ", arm_ctrl$p, "% of 720")),
+  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#ff8d00; --vb-pct:{arm_ctrl$p}%;"))
+```
+
+```{r ar_vb_human}
+#per_hm <- as.numeric(arm_hum$p)
+arm_hum <- arm_sum[arm_sum$a == "Human-led Training", ]
+value_box(
+  title    = "Human-led Training",
+  value    = arm_hum$i,
+  showcase = bsicons::bs_icon("people-fill"),
+  p(paste0(arm_hum$m, " MSEs · ", arm_hum$p, "% of 720")),
+  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#ff8d00; --vb-pct:{arm_hum$p}%;"))
+```
+
+```{r ar_vb_tech}
+#per_tc <- as.numeric(arm_tec$p)
+arm_tec <- arm_sum[arm_sum$a == "Tech-based Training", ]
+value_box(
+  title    = "Tech-based Training",
+  value    = arm_tec$i,
+  showcase = bsicons::bs_icon("phone-fill"),
+  p(paste0(arm_tec$m, " MSEs · ", arm_tec$p, "% of 720")),
+  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#ff8d00; --vb-pct:{arm_tec$p}%;"))
+```
+
+## Row
+
+```{r ar_chart1}
+#| title: "Submitted vs Remaining per Arm"
+plot_ly(arm, x = ~a) |>
+  add_bars(y = ~i,
+           name = "Submitted",
+           marker = list(color = arm_colors, line = list(width = 0))) |>
+  add_bars(y = ~pmax(t - i, 0),
+           name = "Remaining",
+           marker = list(color = "rgba(0,0,0,.07)", line = list(width = 0))) |>
+  pl_layout(barmode = "stack",
+            yaxis = list(rangemode = "tozero", range = c(0, 760), title = "")) |>
+  config(displayModeBar = TRUE)
+```
+
+```{r ar_chart2}
+#| title: "Progress per Arm (%)"
+plot_ly(arm, x = ~a, y = ~p, type = "bar",
+        marker = list(color = arm_colors, line = list(width = 0))) |>
+  pl_layout(showlegend = FALSE,
+            yaxis = list(rangemode = "tozero", range = c(0, 45), title = "%")) |>
+  config(displayModeBar = FALSE)
+```
+
+# Woredas
+
+## Row {height="100px"}
+## Row {height="100px"}
+
+```{r wr_vb_complete}
+n_complete <- sum(woreda_cov$s == "Complete",    na.rm = TRUE)
+value_box(
+  title    = "Complete Woredas",
+  value    = n_complete,
+  showcase = bsicons::bs_icon("check-circle-fill"),
+  p("100% interviews done"),
+  theme = value_box_theme(bg = "#00695C", fg = "#ffffff"))
+```
+
+```{r wr_vb_progress}
+n_progress <- sum(woreda_cov$s == "In Progress", na.rm = TRUE)
+value_box(
+  title    = "In Progress",
+  value    = n_progress,
+  showcase = bsicons::bs_icon("arrow-repeat"),
+  p("partially surveyed"),
+  theme    = value_box_theme(bg = "#26A69A", fg = "#ffffff")
+)
+```
+
+```{r wr_vb_notstarted}
+n_notstart <- sum(woreda_cov$s == "Not Started", na.rm = TRUE)
+value_box(
+  title    = "Not Started",
+  value    = n_notstart,
+  showcase = bsicons::bs_icon("hourglass"),
+  p("yet to begin"),
+  theme    = value_box_theme(bg = "#B2DFDB", fg = "#004D40")
+)
+```
+
+```{r wr_vb_total}
+value_box(
+  title    = "Total Woredas",
+  value    = nrow(woreda_cov),
+  showcase = bsicons::bs_icon("map-fill"),
+  p("across all zones"),
+  theme    = value_box_theme(bg = "#004D40", fg = "#ffffff")
+)
+```
+
+## Row
+
+```{r wr_chart}
+#| title: "🗺️ Woreda Status by Zone"
+# woreda_cov is already in environment from process_data.R
+woreda <- woreda_cov
+zone_summary <- woreda |>
+  group_by(z) |>
+  summarise(
+    Complete     = sum(s == "Complete"),
+    `In Progress`= sum(s == "In Progress"),
+    `Not Started` = sum(s == "Not Started"),
+    .groups = "drop"
+  ) |> arrange(z)
+
+plot_ly(zone_summary, y = ~z) |>
+  add_bars(x = ~Complete,      name = "Complete",     marker = list(color = pal$green)) |>
+  add_bars(x = ~`In Progress`, name = "In Progress",  marker = list(color = pal$amber)) |>
+  add_bars(x = ~`Not Started`, name = "Not Started",  marker = list(color = pal$gray))  |>
+  pl_layout(barmode = "stack",
+            yaxis = list(title = "", categoryorder = "category ascending"),
+            xaxis = list(rangemode = "tozero", title = "Woredas"),
+            margin = list(l = 90, r = 10, t = 30, b = 40)) |>
+  config(displayModeBar = FALSE)
+```
+
+## Row {height="auto"}
+
+```{r wr_table}
+#| output: asis
+HTML('
+<div class="tc"><h3>Woreda-level Status</h3>
+<table><thead><tr>
+  <th>Zone</th><th>Woreda</th><th>Team</th><th>MSE Target</th><th>Int. Target</th>
+  <th>Interviews</th><th>MSEs Active</th><th>Progress</th><th>Status</th>
+</tr></thead><tbody id="tWor"></tbody></table></div>
+<script>
+document.getElementById("tWor").innerHTML=D.woreda.map(w=>`
+  <tr><td>${w.z}</td><td><strong>${w.w}</strong></td><td>${w.t}</td>
+  <td>${w.tgt}</td><td>${w.it}</td><td>${w.i}</td><td>${w.ms}</td>
+  <td><div class="mb"><div class="mbt"><div class="mbf" style="width:${Math.min(w.p,100)}%;background:${pc(w.p)}"></div></div>
+  <span class="mv">${w.p}%</span></div></td>
+  <td>${pill(w.s)}</td></tr>`).join("");
+</script>')
+```
+
+# Spousal 
+
+## Row {height="120px"}
+
+```{r sp_vb_sparm1}
+a <- sp_by_sparm[1, ]
+value_box(
+  title    = paste0("Spousal: ", a$arm),
+  value    = paste0(a$completed, " / ", a$eligible),
+  showcase = bsicons::bs_icon("heart-fill"),
+  p(paste0(a$pct, "% complete · ", a$started, " started · ", a$not_started, " not started")),  
+  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#ff8d00; --vb-pct:{a$pct}%;"))
+```
+
+```{r sp_vb_sparm2}
+a <- sp_by_sparm[2, ]
+value_box(
+  title    = paste0("Spousal: ", a$arm),
+  value    = paste0(a$completed, " / ", a$eligible),
+  showcase = bsicons::bs_icon("heart"),
+  p(paste0(a$pct, "% complete · ", a$started, " started · ", a$not_started, " not started")),    style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#ff8d00; --vb-pct:{a$pct}%;"))
+```
+
+```{r sp_vb_edtarm1}
+a <- sp_by_edtarm[1, ]
+value_box(
+  title    = paste0("Edutainment: ", a$arm),
+  value    = paste0(a$completed, " / ", a$eligible),
+  showcase = bsicons::bs_icon("film"),
+  p(paste0(a$pct, "% complete · ", a$started, " started · ", a$not_started, " not started")), style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#ff8d00; --vb-pct:{a$pct}%;"))
+```
+
+```{r sp_vb_edtarm2}
+a <- sp_by_edtarm[2, ]
+value_box(
+  title    = paste0("Edutainment: ", a$arm),
+  value    = paste0(a$completed, " / ", a$eligible),
+  showcase = bsicons::bs_icon("film"),
+  p(paste0(a$pct, "% complete · ", a$started, " started · ", a$not_started, " not started")),  style    = glue("border-left-color:#0C6D71 !important; --vb-bar-color:#ff8d00; --vb-pct:{a$pct}%;"))
+```
+
+
+## Row
+
+```{r sp_chart1}
+#| title: "Spouse Interviews by Team"
+plot_ly(team6, x = ~team) |>
+  add_bars(y = ~sp_comp,  name = "Completed 2/2",
+           marker = list(color = "#00695C", line = list(width = 0))) |>
+  add_bars(y = ~sp_incomp, name = "Only 1/2",
+           marker = list(color = "#26A69A", line = list(width = 0))) |>
+  pl_layout(barmode = "stack", yaxis = list(rangemode = "tozero", title = ""), 
+            xaxis = list(
+      tickangle = -45,
+      dtick = "D1",
+      tickformat = "%b %d",
+      tickfont = list(size = 10)  )) |>
+  config(displayModeBar = TRUE)
+```
+
+```{r sp_chart2}
+#| title: "Cumulative Spouse Interviews vs Pace"
+plot_ly(daily, x = ~date) |>
+  add_trace(y = ~cum_sp,  name = "Cumulative Spouse", type = "scatter", mode = "lines+markers",
+            line = list(color = pal$amber, width = 2),
+            marker = list(size = 5, color = pal$amber),
+            fill = "tozeroy", fillcolor = "rgba(38,166,154,.10)") |>
+  add_trace(y = ~sp_pace, name = "Required Pace",     type = "scatter", mode = "lines",
+            line = list(color = pal$amber, dash = "dash", width = 1.5),
+            marker = list(size = 0)) |>
+  pl_layout(yaxis = list(rangemode = "tozero", title = "")) |>
+  config(displayModeBar = FALSE)
+```
+
+
+## Row
+
+```{r sp_chart3}
+#| title: "By Spousal Support Assignment"
+sp_sparm <- sp_by_sparm
+plot_ly(sp_sparm, x = ~arm) |>
+  add_bars(y = ~completed,  name = "Completed 2/2",
+           marker = list(color = pal$green, line = list(width = 0))) |>
+  add_bars(y = ~started,    name = "Started (1/2)",
+           marker = list(color = pal$amber, line = list(width = 0))) |>
+  add_bars(y = ~not_started, name = "Not Started",
+           marker = list(color = pal$gray,  line = list(width = 0))) |>
+  pl_layout(barmode = "stack", yaxis = list(rangemode = "tozero", title = "") ) |>
+  config(displayModeBar = TRUE)
+```
+
+```{r sp_chart4}
+#| title: "🎬 By Edutainment"
+sp_edtarm <- sp_by_edtarm
+plot_ly(sp_edtarm, x = ~arm) |>
+  add_bars(y = ~completed,  name = "Completed 2/2",
+           marker = list(color = pal$green, line = list(width = 0))) |>
+  add_bars(y = ~started,    name = "Started (1/2)",
+           marker = list(color = pal$amber, line = list(width = 0))) |>
+  add_bars(y = ~not_started, name = "Not Started",
+           marker = list(color = pal$gray,  line = list(width = 0))) |>
+  pl_layout(barmode = "stack", yaxis = list(rangemode = "tozero", title = "")) |>
+  config(displayModeBar = T)
+```
+
+## Row {height="auto"}
+
+```{r sp_table}
+#| output: asis
+HTML(paste0('
+<div class="tc"><h3>Spouse Follow-up Required (', k$sp_incomp, ' MSEs)</h3>
+<table><thead><tr>
+  <th>MSE ID</th><th>Woreda</th><th>Team</th><th>Supervisor</th>
+  <th>Treatment Arm</th><th>Interviews</th><th>Status</th><th>Last Upload</th>
+</tr></thead><tbody id="tSp"></tbody></table></div>
+<script>
+document.getElementById("tSp").innerHTML=D.fu_sp.map(r=>
+  `<tr class="fur"><td><strong>${r.id}</strong></td><td>${r.w}</td>
+  <td>${r.team}</td><td>${r.sup}</td><td>${r.arm}</td>
+  <td>${r.i}/2</td><td><span class="pill pr">Need ${r.miss} more</span></td>
+  <td>${r.dl}</td></tr>`).join("");
+</script>
+'))
+```
+
+# RCE 
+
+## Row {height="60px"}
+
+```{r rce_callout}
+#| output: asis
+# Info banner explaining the RCE design
+n_flagged <- if (nrow(rce_enum) > 0) sum(rce_enum$flag_uniform, na.rm = TRUE) else 0
+n_enum    <- if (nrow(rce_enum) > 0) n_distinct(rce_enum$enumerator) else 0
+total_mis <- if (nrow(rce_enum) > 0) sum(rce_enum$mismatch, na.rm = TRUE) else 0
+alert_cls <- if (n_flagged > 0) "alert-warning" else "alert-success"
+alert_ico <- if (n_flagged > 0) "⚠️" else "✅"
+HTML(glue('
+<div class="alert {alert_cls}" role="alert" style="margin:4px 0;padding:8px 14px;font-size:13px;border-radius:6px">
+  <strong>{alert_ico} Random Choice Experiment (RCE) Quality Check</strong> &nbsp;|&nbsp;
+  4 blocks · 6 main choice questions (A/B/C) + 1 repeat consistency check each.
+  &nbsp;<strong>{n_enum}</strong> enumerators &nbsp;·&nbsp;
+  <strong>{total_mis}</strong> total answer mismatches &nbsp;·&nbsp;
+  <strong style="color:#C62828">{n_flagged}</strong> enumerator-block(s) flagged (&ge;80% same letter).
+</div>'))
+```
+
+## Row {height="115px"}
+
+```{r rce_vb_b1}
+#| padding: 4px
+b <- rce_block[rce_block$block == 1, ]
+if (nrow(b) == 0) b <- data.frame(block=1,n_resp=0,freq_A=0,freq_B=0,freq_C=0,pct_A=0,pct_B=0,pct_C=0,mismatches=0)
+dom_col <- if (b$pct_A >= b$pct_B & b$pct_A >= b$pct_C) "#004D40" else
+           if (b$pct_B >= b$pct_C) "#26A69A" else "#B2DFDB"
+mis_txt <- if (b$mismatches > 0) paste0("⚠️ ", b$mismatches, " mismatch(es)") else "✅ 0 mismatches"
+value_box(
+  title    = "Block 1 · RCE",
+  value    = paste0(b$n_resp, " responses"),
+  showcase = bsicons::bs_icon("1-circle-fill"),
+  p(paste0("A: ", b$pct_A, "% · B: ", b$pct_B, "% · C: ", b$pct_C, "%")),
+  p(mis_txt),
+  theme    = value_box_theme(bg = dom_col, fg = "#ffffff")
+)
+```
+
+```{r rce_vb_b2}
+#| padding: 4px
+b <- rce_block[rce_block$block == 2, ]
+if (nrow(b) == 0) b <- data.frame(block=2,n_resp=0,freq_A=0,freq_B=0,freq_C=0,pct_A=0,pct_B=0,pct_C=0,mismatches=0)
+dom_col <- if (b$pct_A >= b$pct_B & b$pct_A >= b$pct_C) "#004D40" else
+           if (b$pct_B >= b$pct_C) "#26A69A" else "#B2DFDB"
+mis_txt <- if (b$mismatches > 0) paste0("⚠️ ", b$mismatches, " mismatch(es)") else "✅ 0 mismatches"
+value_box(
+  title    = "Block 2 · RCE",
+  value    = paste0(b$n_resp, " responses"),
+  showcase = bsicons::bs_icon("2-circle-fill"),
+  p(paste0("A: ", b$pct_A, "% · B: ", b$pct_B, "% · C: ", b$pct_C, "%")),
+  p(mis_txt),
+  theme    = value_box_theme(bg = dom_col, fg = "#ffffff")
+)
+```
+
+```{r rce_vb_b3}
+#| padding: 4px
+b <- rce_block[rce_block$block == 3, ]
+if (nrow(b) == 0) b <- data.frame(block=3,n_resp=0,freq_A=0,freq_B=0,freq_C=0,pct_A=0,pct_B=0,pct_C=0,mismatches=0)
+dom_col <- if (b$pct_A >= b$pct_B & b$pct_A >= b$pct_C) "#004D40" else
+           if (b$pct_B >= b$pct_C) "#26A69A" else "#B2DFDB"
+mis_txt <- if (b$mismatches > 0) paste0("⚠️ ", b$mismatches, " mismatch(es)") else "✅ 0 mismatches"
+value_box(
+  title    = "Block 3 · RCE",
+  value    = paste0(b$n_resp, " responses"),
+  showcase = bsicons::bs_icon("3-circle-fill"),
+  p(paste0("A: ", b$pct_A, "% · B: ", b$pct_B, "% · C: ", b$pct_C, "%")),
+  p(mis_txt),
+  theme    = value_box_theme(bg = dom_col, fg = "#ffffff")
+)
+```
+
+```{r rce_vb_b4}
+#| padding: 4px
+b <- rce_block[rce_block$block == 4, ]
+if (nrow(b) == 0) b <- data.frame(block=4,n_resp=0,freq_A=0,freq_B=0,freq_C=0,pct_A=0,pct_B=0,pct_C=0,mismatches=0)
+dom_col <- if (b$pct_A >= b$pct_B & b$pct_A >= b$pct_C) "#004D40" else
+           if (b$pct_B >= b$pct_C) "#26A69A" else "#B2DFDB"
+mis_txt <- if (b$mismatches > 0) paste0("⚠️ ", b$mismatches, " mismatch(es)") else "✅ 0 mismatches"
+value_box(
+  title    = "Block 4 · RCE",
+  value    = paste0(b$n_resp, " responses"),
+  showcase = bsicons::bs_icon("4-circle-fill"),
+  p(paste0("A: ", b$pct_A, "% · B: ", b$pct_B, "% · C: ", b$pct_C, "%")),
+  p(mis_txt),
+  theme    = value_box_theme(bg = dom_col, fg = "#ffffff")
+)
+```
+
+## Row {height="280px"}
+
+```{r rce_chart_b1}
+#| title: "📊 Block 1 · A / B / C Distribution"
+rc_colors <- c("#004D40", "#26A69A", "#B2DFDB")
+b <- rce_block[rce_block$block == 1, ]
+if (nrow(b) == 0) b <- data.frame(freq_A=0, freq_B=0, freq_C=0, n_resp=1)
+tot <- max(b$freq_A + b$freq_B + b$freq_C, 1)
+plot_ly(
+  x    = c("A","B","C"),
+  y    = c(b$freq_A, b$freq_B, b$freq_C),
+  type = "bar",
+  marker      = list(color = rc_colors, line = list(width = 0)),
+  text        = paste0(c(b$freq_A, b$freq_B, b$freq_C), "<br>",
+                       round(c(b$freq_A, b$freq_B, b$freq_C) / tot * 100, 1), "%"),
+  textposition = "outside",
+  hovertemplate = "%{x}: %{y} responses (%{text})<extra>Block 1</extra>"
+) |>
+  pl_layout(showlegend = FALSE,
+            yaxis = list(rangemode = "tozero", title = "Responses"),
+            xaxis = list(title = "Choice")) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r rce_chart_b2}
+#| title: "📊 Block 2 · A / B / C Distribution"
+b <- rce_block[rce_block$block == 2, ]
+if (nrow(b) == 0) b <- data.frame(freq_A=0, freq_B=0, freq_C=0, n_resp=1)
+tot <- max(b$freq_A + b$freq_B + b$freq_C, 1)
+plot_ly(
+  x    = c("A","B","C"),
+  y    = c(b$freq_A, b$freq_B, b$freq_C),
+  type = "bar",
+  marker      = list(color = rc_colors, line = list(width = 0)),
+  text        = paste0(c(b$freq_A, b$freq_B, b$freq_C), "<br>",
+                       round(c(b$freq_A, b$freq_B, b$freq_C) / tot * 100, 1), "%"),
+  textposition = "outside",
+  hovertemplate = "%{x}: %{y} responses<extra>Block 2</extra>"
+) |>
+  pl_layout(showlegend = FALSE,
+            yaxis = list(rangemode = "tozero", title = "Responses"),
+            xaxis = list(title = "Choice")) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r rce_chart_b3}
+#| title: "📊 Block 3 · A / B / C Distribution"
+b <- rce_block[rce_block$block == 3, ]
+if (nrow(b) == 0) b <- data.frame(freq_A=0, freq_B=0, freq_C=0, n_resp=1)
+tot <- max(b$freq_A + b$freq_B + b$freq_C, 1)
+plot_ly(
+  x    = c("A","B","C"),
+  y    = c(b$freq_A, b$freq_B, b$freq_C),
+  type = "bar",
+  marker      = list(color = rc_colors, line = list(width = 0)),
+  text        = paste0(c(b$freq_A, b$freq_B, b$freq_C), "<br>",
+                       round(c(b$freq_A, b$freq_B, b$freq_C) / tot * 100, 1), "%"),
+  textposition = "outside",
+  hovertemplate = "%{x}: %{y} responses<extra>Block 3</extra>"
+) |>
+  pl_layout(showlegend = FALSE,
+            yaxis = list(rangemode = "tozero", title = "Responses"),
+            xaxis = list(title = "Choice")) |>
+  config(displayModeBar = FALSE)
+```
+
+```{r rce_chart_b4}
+#| title: "📊 Block 4 · A / B / C Distribution"
+b <- rce_block[rce_block$block == 4, ]
+if (nrow(b) == 0) b <- data.frame(freq_A=0, freq_B=0, freq_C=0, n_resp=1)
+tot <- max(b$freq_A + b$freq_B + b$freq_C, 1)
+plot_ly(
+  x    = c("A","B","C"),
+  y    = c(b$freq_A, b$freq_B, b$freq_C),
+  type = "bar",
+  marker      = list(color = rc_colors, line = list(width = 0)),
+  text        = paste0(c(b$freq_A, b$freq_B, b$freq_C), "<br>",
+                       round(c(b$freq_A, b$freq_B, b$freq_C) / tot * 100, 1), "%"),
+  textposition = "outside",
+  hovertemplate = "%{x}: %{y} responses<extra>Block 4</extra>"
+) |>
+  pl_layout(showlegend = FALSE,
+            yaxis = list(rangemode = "tozero", title = "Responses"),
+            xaxis = list(title = "Choice")) |>
+  config(displayModeBar = FALSE)
+```
+
+## Row {height="320px"}
+
+```{r rce_enum_heatmap}
+#| title: "🔥 Enumerator × Block Heatmap (% dominant choice)"
+if (nrow(rce_enum) > 0) {
+  heat_df <- rce_enum %>%
+    mutate(
+      label   = paste0(enumerator, "\n(", supervisor, ")"),
+      flag_lbl = if_else(flag_uniform, "🔴", ""),
+      dom_pct  = max_pct
+    )
+
+  plot_ly(heat_df,
+    x    = ~factor(block, labels = paste("Block", 1:4)),
+    y    = ~label,
+    z    = ~dom_pct,
+    type = "heatmap",
+    colorscale = list(
+      c(0,   "#E0F2F1"),
+      c(0.5, "#26A69A"),
+      c(0.8, "#004D40"),
+      c(1,   "#C62828")
+    ),
+    zmin = 33, zmax = 100,
+    text = ~paste0(enumerator, " | Block ", block,
+                   "<br>Dominant: ", dom_pct, "%",
+                   "<br>A:", pct_A, "% B:", pct_B, "% C:", pct_C, "%",
+                   "<br>Mismatch: ", mismatch,
+                   if_else(flag_uniform, "<br>🔴 FLAGGED", "")),
+    hoverinfo = "text"
+  ) |>
+    layout(
+      font        = list(family = "Segoe UI, Arial", size = 10, color = "#595959"),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      plot_bgcolor  = "rgba(0,0,0,0)",
+      xaxis  = list(title = "", side = "top"),
+      yaxis  = list(title = "", tickfont = list(size = 9)),
+      margin = list(l = 140, r = 60, t = 40, b = 20),
+      coloraxis = list(colorbar = list(
+        title = "Dominant %", ticksuffix = "%", len = 0.8
+      ))
+    ) |>
+    config(displayModeBar = FALSE)
+} else {
+  HTML('<p style="color:#888;padding:20px">No RCE data available.</p>')
+}
+```
+
+## Row
+
+```{r rce_mismatch_chart}
+#| title: "⚠️ Total Mismatches per Enumerator (all blocks)"
+if (nrow(rce_enum) > 0) {
+  mis_by_enum <- rce_enum |>
+    group_by(enumerator, supervisor) |>
+    summarise(mis = sum(mismatch, na.rm = TRUE), .groups = "drop") |>
+    arrange(mis) |>
+    mutate(
+      label     = paste0(enumerator, " (", supervisor, ")"),
+      bar_color = case_when(
+        mis > 2 ~ "#C62828",
+        mis > 0 ~ "#FF8F00",
+        TRUE    ~ "#00695C"
+      )
+    )
+
+  plot_ly(mis_by_enum,
+    y    = ~label, x = ~mis,
+    type = "bar", orientation = "h",
+    marker        = list(color = ~bar_color, line = list(width = 0)),
+    text          = ~if_else(mis > 0, as.character(mis), ""),
+    textposition  = "outside",textfont = list(size = 14),
+    hovertemplate = "%{y}: %{x} mismatch(es)<extra></extra>") |>
+    pl_layout(
+      showlegend = FALSE,
+      yaxis = list(categoryorder = "array",
+                   categoryarray = mis_by_enum$label,
+                   title = "", tickfont = list(size = 9)),
+      xaxis = list(rangemode = "tozero", dtick = 1, title = "Mismatches"),
+      margin = list(l = 160, r = 50, t = 30, b = 40)
+    ) |>
+    config(displayModeBar = FALSE)
+} else {
+  HTML('<p style="color:#888;padding:20px">No RCE data available.</p>')
+}
+```
+
+## Row {height="auto"}
+
+```{r rce_enum_table}
+#| title: "👥 Enumerator Detail by Block"
+#| padding: 0px
+if (nrow(rce_enum) > 0) {
+  # Build inline mini-bar HTML for a percentage value and colour
+  mini_bar <- function(pct, col) {
+    w <- round(pct * 0.65)
+    sprintf('<div style="display:inline-block;width:%dpx;height:7px;background:%s;
+             border-radius:2px;vertical-align:middle;margin-left:3px"></div>', w, col)
+  }
+
+  tbl_df <- rce_enum %>%
+    arrange(block, desc(flag_uniform), desc(mismatch), enumerator) %>%
+    mutate(
+      Block      = paste0("Block ", block),
+      Enumerator = enumerator,
+      Supervisor = supervisor,
+      Resp       = n_resp,
+      `A (n/%)`  = paste0(freq_A, " / ", pct_A, "%",
+                          mini_bar(pct_A, "#004D40")),
+      `B (n/%)`  = paste0(freq_B, " / ", pct_B, "%",
+                          mini_bar(pct_B, "#26A69A")),
+      `C (n/%)`  = paste0(freq_C, " / ", pct_C, "%",
+                          mini_bar(pct_C, "#B2DFDB")),
+      Mismatch   = if_else(mismatch > 0,
+                           paste0('<span style="background:#FF8F00;color:#fff;padding:1px 6px;
+                                   border-radius:10px;font-size:11px">', mismatch, '</span>'),
+                           "0"),
+      Flag       = if_else(flag_uniform,
+                           '<span style="color:#C62828;font-weight:700;font-size:13px">🔴 Flagged</span>',
+                           '<span style="color:#00695C">✅</span>')
+    ) %>%
+    select(Block, Enumerator, Supervisor, Resp,
+           `A (n/%)`, `B (n/%)`, `C (n/%)`, Mismatch, Flag)
+
+  # Render using knitr::kable with bootstrap styling
+  knitr::kable(tbl_df, format = "html", escape = FALSE,
+               table.attr = 'class="table table-sm table-hover" style="font-size:12px"') |>
+    kableExtra::kable_styling(bootstrap_options = c("striped","hover","condensed"),
+                              full_width = TRUE) |>
+    kableExtra::row_spec(which(rce_enum$flag_uniform), background = "#FFF3E0")
+} else {
+  HTML('<p style="color:#888;padding:20px">No RCE data available.</p>')
+}
+```
