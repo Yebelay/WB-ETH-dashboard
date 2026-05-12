@@ -1,0 +1,61 @@
+- category: Presentations
+  description: |
+    Create presentations (slide show) in a variety of formats.
+  tiles:
+    - title: Introduction to R and RStudio 
+      href: https://yebelay.rbind.io/static/slides/rintro/day 1.html
+      code: https://github.com/Yebelay/quarto_site/blob/main/static/slides/rintro/day 1.qmd
+      thumbnail: img/intr1.jpg
+    - title: Advanced data managment in R 
+      href: https://yebelay.rbind.io/static/slides/datamanagment/datamanagment.html
+      code: https://github.com/Yebelay/quarto_site/blob/main/static/slides/datamanagment/datamanagment.qmd
+      thumbnail: img/datama.jpg
+      
+    - title: Data visualization 
+      href: https://yebelay.rbind.io/static/slides/rplot/graph.html
+      code: https://github.com/Yebelay/quarto_site/blob/main/static/slides/rplot/graph.qmd
+      thumbnail: img/viz1.jpg
+      
+    - title: Spatial presentations 
+      href: https://yebelay.rbind.io/static/slides/spatial-data-slide/spatial.html
+      code: https://github.com/Yebelay/quarto_site/blob/main/static/slides/Spatial-Data-Slide/Spatial.qmd
+      thumbnail: img/spa.jpg
+
+    - title: Making Slide with own theme 
+      href: https://yebelay.github.io/Making-Slide-in-R/Slide.html#1
+      code: https://github.com/Yebelay/Making-Slide-in-R/blob/main/Slide.Rmd
+      thumbnail: img/theme1.jpg
+      
+    - title: Longitudinal-data-analysis 
+      href: https://yebelay.rbind.io/static/slides/longitudinal data analysis.pdf
+      code: https://github.com/Yebelay/Longitudinal-data-analysis/blob/main/Ldata-Analysis.Rmd
+      thumbnail: img/lda1.jpg 
+      
+    - title: Joint Model 
+      href: https://yebelay.github.io/Joint-Model/jointmodel.html#1
+      code: https://github.com/Yebelay/Joint-Model/blob/main/jointmodel.Rmd
+      thumbnail: img/joint1.jpg
+    
+    - title: Causal inference presentations 
+      href: https://yebelay.rbind.io/static/slides/causal inference from observational data using r (2).pdf
+      thumbnail: img/causal1.jpg
+
+    - title: RMarkdown  
+      href: https://yebelay.github.io/Introduction-to-RMarkdown/RMarkdown-presentation.html
+      code: https://github.com/Yebelay/Introduction-to-RMarkdown/blob/main/RMarkdown%20presentation.Rmd
+      thumbnail: img/Rmarkdown1.jpg     
+    
+    - title: Shinydasboard 
+      href: https://yebelay.rbind.io/static/slides/shinydashboard/shinydashboard.html
+      code: https://github.com/Yebelay/quarto_site/blob/main/static/slides/shinydashboard/shinydashboard.qmd
+      thumbnail: img/dashboard.jpg
+                       
+    - title: Sampling Design 
+      href: https://yebelay.rbind.io/static/slides/Sampling/Survey.html
+      code: https://github.com/Yebelay/quarto_site/blob/main/static/slides/Sampling/Survey.qmd
+      thumbnail: img/Sampling.jpg                       
+    
+    - title: Quart Dashboard 
+      href: https://yebelay.rbind.io/static/slides/Quarto_Dashboard/quarto_dashboards.html
+      code: https://github.com/Yebelay/quarto_site/blob/main/static/slides/Quarto_Dashboard/quarto_dashboards.qmd
+      thumbnail: img/qdashboard.jpg    
